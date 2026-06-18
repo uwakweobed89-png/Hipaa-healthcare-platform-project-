@@ -135,7 +135,15 @@ jobs:
         with:
           task-definition: task-def.json
           container-name: ${{ env.CONTAINER_NAME }}
-          image: ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}
+          image: ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }} 
+
+      - name: Update ECS network configuration
+        run: |
+          aws ecs update-service \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --service ${{ env.ECS_SERVICE }} \
+            --network-configuration "awsvpcConfiguration={subnets=[subnet-0c4b81e63c9d3db3f,subnet-042b4a91c6706da66],securityGroups=[sg-0ca24fd35f0b822da],assignPublicIp=DISABLED}" \
+            --region us-east-1
 
       - name: Deploy to ECS
         uses: aws-actions/amazon-ecs-deploy-task-definition@v1
@@ -143,7 +151,7 @@ jobs:
           task-definition: ${{ steps.task-def.outputs.task-definition }}
           service: ${{ env.ECS_SERVICE }}
           cluster: ${{ env.ECS_CLUSTER }}
-          wait-for-service-stability: true
+          wait-for-service-stability: false
 
   security-summary:
     name: HIPAA Security Summary
