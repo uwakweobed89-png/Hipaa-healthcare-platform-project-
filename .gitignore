@@ -1,0 +1,21 @@
+$gitignore = @"
+node_modules/
+.terraform/
+*.tfstate
+*.tfstate.backup
+*.tfstate.tflock
+.env
+.env.local
+dist/
+build/
+*.zip
+.DS_Store
+Thumbs.db
+.vscode/
+trivy-results.txt
+npm-audit-report.json
+results.sarif
+.aws/
+credentials
+"@
+[System.IO.File]::WriteAllText("$PWD\.gitignore", $gitignore)
