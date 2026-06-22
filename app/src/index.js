@@ -5,6 +5,36 @@ const PORT = process.env.PORT || 8080;
 app.disable('x-powered-by');
 app.use(express.json());
 
+// In production: reads database credentials from Secrets Manager
+// Never hardcode credentials in code
+async function getDBCredentials() {
+  const secretName = process.env.DB_SECRET_NAME;
+
+  if (!secretName) {
+    console.log('DB_SECRET_NAME not set — using local dev mode');
+    return null;
+  }
+
+  try {
+    const { SecretsManagerClient, GetSecretValueCommand } = require('@aws-sdk/client-secrets-manager');
+    const client = new SecretsManagerClient({ region: process.env.AWS_REGION || 'us-east-1' });
+    const response = await client.send(new GetSecretValueCommand({ SecretId: secretName }));
+    return JSON.parse(response.SecretString);
+  } catch (error) {
+    console.error('Failed to fetch DB credentials from Secrets Manager:', error.message);
+    return null;
+  }
+}
+
+// Show secrets manager status in health check
+let dbCredentialsLoaded = false;
+getDBCredentials().then(creds => {
+  if (creds) {
+    dbCredentialsLoaded = true;
+    console.log('DB credentials loaded from Secrets Manager');
+  }
+});
+
 // Simulated patient records (in production this would be RDS PostgreSQL)
 const patients = [];
 const auditLog = [];
@@ -34,7 +64,8 @@ app.get('/health', (req, res) => {
     service: 'hipaa-patient-records-api',
     timestamp: new Date().toISOString(),
     version: '1.0.0',
-    hipaaCompliant: true
+    hipaaCompliant: true,
+    secretsManager: dbCredentialsLoaded ? 'connected' : 'not connected'
   });
 });
 
